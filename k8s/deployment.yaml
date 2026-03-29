@@ -1,0 +1,30 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: low-latency-asr-lab
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: low-latency-asr-lab
+  template:
+    metadata:
+      labels:
+        app: low-latency-asr-lab
+    spec:
+      containers:
+        - name: api
+          image: low-latency-asr-lab:latest
+          ports:
+            - containerPort: 8000
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: low-latency-asr-lab
+spec:
+  selector:
+    app: low-latency-asr-lab
+  ports:
+    - port: 80
+      targetPort: 8000

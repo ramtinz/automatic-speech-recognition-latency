@@ -1,0 +1,12 @@
+numpy
+scipy
+torch
+transformers
+fastapi
+uvicorn
+jiwer
+dtw-python
+datasets
+soundfile
+torchcodec
+matplotlib
