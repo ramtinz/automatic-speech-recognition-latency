@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="920" height="1020" viewBox="0 0 920 1020" role="img" aria-labelledby="title desc">
+  <title id="title">DTW-guided low-latency ASR pipeline</title>
+  <desc id="desc">Top-to-bottom pipeline showing input audio, preprocessing, chunking, local ASR, overlap alignment with DTW, and transcript stitching.</desc>
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="9" refY="3.5" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L10,3.5 L0,7 Z" fill="#355070"/>
+    </marker>
+    <style>
+      .bg { fill: #fbfaf6; }
+      .main { fill: #efe7d6; stroke: #355070; stroke-width: 2.5; }
+      .chunk { fill: #dbe8f3; stroke: #355070; stroke-width: 2.5; }
+      .dtw { fill: #dcefdc; stroke: #355070; stroke-width: 2.5; }
+      .txt { font-family: Arial, sans-serif; font-size: 20px; fill: #1f2933; text-anchor: middle; dominant-baseline: middle; }
+      .small { font-family: Arial, sans-serif; font-size: 17px; fill: #1f2933; text-anchor: middle; dominant-baseline: middle; }
+      .caption { font-family: Arial, sans-serif; font-size: 18px; fill: #355070; text-anchor: middle; }
+      .line { fill: none; stroke: #355070; stroke-width: 3; marker-end: url(#arrow); stroke-linecap: round; }
+      .dash { fill: none; stroke: #6c8aa6; stroke-width: 2.5; stroke-dasharray: 8 8; }
+    </style>
+  </defs>
+
+  <rect class="bg" x="0" y="0" width="920" height="1020"/>
+
+  <rect class="main" x="280" y="30" width="360" height="70" rx="16" ry="16"/>
+  <text class="txt" x="460" y="65">Input Speech Waveform</text>
+
+  <rect class="main" x="280" y="150" width="360" height="70" rx="16" ry="16"/>
+  <text class="txt" x="460" y="185">Resample + Normalize</text>
+
+  <rect class="main" x="280" y="270" width="360" height="70" rx="16" ry="16"/>
+  <text class="txt" x="460" y="305">Chunk Audio with Overlap</text>
+
+  <text class="caption" x="460" y="382">Streaming windows with overlap</text>
+  <path class="dash" d="M150 398 L770 398"/>
+
+  <rect class="chunk" x="120" y="430" width="190" height="64" rx="16" ry="16"/>
+  <text class="small" x="215" y="462">Chunk 1</text>
+
+  <rect class="chunk" x="365" y="430" width="190" height="64" rx="16" ry="16"/>
+  <text class="small" x="460" y="462">Chunk 2</text>
+
+  <rect class="chunk" x="610" y="430" width="190" height="64" rx="16" ry="16"/>
+  <text class="small" x="705" y="462">Chunk N</text>
+
+  <rect class="main" x="120" y="560" width="190" height="64" rx="16" ry="16"/>
+  <text class="small" x="215" y="592">Local ASR</text>
+
+  <rect class="main" x="365" y="560" width="190" height="64" rx="16" ry="16"/>
+  <text class="small" x="460" y="592">Local ASR</text>
+
+  <rect class="main" x="610" y="560" width="190" height="64" rx="16" ry="16"/>
+  <text class="small" x="705" y="592">Local ASR</text>
+
+  <rect class="main" x="120" y="690" width="680" height="70" rx="16" ry="16"/>
+  <text class="txt" x="460" y="725">Chunk Transcripts + Overlap Features</text>
+
+  <text class="caption" x="460" y="812">DTW aligns overlap regions before transcript merging</text>
+
+  <rect class="dtw" x="280" y="840" width="360" height="70" rx="16" ry="16"/>
+  <text class="txt" x="460" y="865">DTW Alignment on Overlap Region</text>
+  <text class="small" x="460" y="892">Estimate repeated boundary content</text>
+
+  <rect class="dtw" x="280" y="940" width="360" height="70" rx="16" ry="16"/>
+  <text class="txt" x="460" y="975">Transcript Stitching -&gt; Final Text</text>
+
+  <path class="line" d="M460 100 L460 150"/>
+  <path class="line" d="M460 220 L460 270"/>
+  <path class="line" d="M460 340 L460 400"/>
+
+  <path class="line" d="M460 400 L215 430"/>
+  <path class="line" d="M460 400 L460 430"/>
+  <path class="line" d="M460 400 L705 430"/>
+
+  <path class="line" d="M215 494 L215 560"/>
+  <path class="line" d="M460 494 L460 560"/>
+  <path class="line" d="M705 494 L705 560"/>
+
+  <path class="line" d="M215 624 L215 657 L460 657 L460 690"/>
+  <path class="line" d="M460 624 L460 690"/>
+  <path class="line" d="M705 624 L705 657 L460 657 L460 690"/>
+
+  <path class="line" d="M460 760 L460 840"/>
+  <path class="line" d="M460 910 L460 940"/>
+</svg>

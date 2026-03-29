@@ -18,6 +18,12 @@ We compared three strategies:
 
 Chunks used a window length of `1200` ms and a stride of `400` ms.
 
+### Signal Flow
+
+![DTW-guided low-latency ASR pipeline](figures/pipeline_diagram.svg)
+
+DTW is not used as the recognizer itself. Its role is to align neighboring overlapping chunks so the stitching stage can decide how much repeated boundary content should be removed before merging partial transcripts.
+
 ## Results
 
 Mean batch WER was `0.066`. Mean naive chunked WER increased to `6.999`. The DTW-guided method reduced this to `2.138`.
