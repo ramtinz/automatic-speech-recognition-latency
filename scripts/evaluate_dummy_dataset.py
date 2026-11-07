@@ -11,7 +11,7 @@ from datasets import load_dataset
 
 from mini_asr_lab.audio import chunk_audio
 from mini_asr_lab.backends import build_backend
-from mini_asr_lab.dtw_alignment import estimate_overlap_offset, stitch_chunk_texts_with_dtw
+from mini_asr_lab.dtw_alignment import estimate_overlap_offset, stitch_chunk_texts
 
 
 def timed_call(fn):
@@ -96,11 +96,18 @@ def main() -> None:
                         sample_rate=sample_rate,
                     )
                 )
-        dtw_stitched_text = stitch_chunk_texts_with_dtw(
+        dtw_stitched_text = stitch_chunk_texts(
             chunk_outputs,
             dtw_offsets,
             chunk_ms=args.chunk_ms,
             overlap_ms=overlap_ms,
+        )
+
+        fixed_overlap_text = stitch_chunk_texts(
+            chunk_outputs, [], chunk_ms=args.chunk_ms, overlap_ms=overlap_ms
+        )
+        text_only_text = stitch_chunk_texts(
+            chunk_outputs, None, chunk_ms=args.chunk_ms, overlap_ms=overlap_ms
         )
 
         examples.append(
@@ -110,8 +117,13 @@ def main() -> None:
                 "batch_text": batch_text,
                 "naive_chunk_text": naive_chunk_text,
                 "dtw_stitched_text": dtw_stitched_text,
+                "fixed_overlap_text": fixed_overlap_text,
+                "text_only_text": text_only_text,
+                "chunk_outputs": chunk_outputs,
                 "batch_wer": round(word_error_rate(reference, batch_text), 4),
                 "naive_chunk_wer": round(word_error_rate(reference, naive_chunk_text), 4),
+                "fixed_overlap_wer": round(word_error_rate(reference, fixed_overlap_text), 4),
+                "text_only_wer": round(word_error_rate(reference, text_only_text), 4),
                 "dtw_chunk_wer": round(word_error_rate(reference, dtw_stitched_text), 4),
                 "audio_seconds": round(len(samples) / sample_rate, 3),
                 "batch_ms": round(batch_ms, 3),
@@ -131,6 +143,8 @@ def main() -> None:
     summary_metrics = {
         "mean_batch_wer": round(mean(item["batch_wer"] for item in examples), 4),
         "mean_naive_chunk_wer": round(mean(item["naive_chunk_wer"] for item in examples), 4),
+        "mean_fixed_overlap_wer": round(mean(item["fixed_overlap_wer"] for item in examples), 4),
+        "mean_text_only_wer": round(mean(item["text_only_wer"] for item in examples), 4),
         "mean_dtw_chunk_wer": round(mean(item["dtw_chunk_wer"] for item in examples), 4),
         "median_batch_wer": round(median(item["batch_wer"] for item in examples), 4),
         "median_naive_chunk_wer": round(median(item["naive_chunk_wer"] for item in examples), 4),

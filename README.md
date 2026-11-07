@@ -11,25 +11,21 @@ This project tests a simple idea: use Dynamic Time Warping (DTW) to align neighb
 - a reproducible experiment on a public speech dataset
 - a short report with figures and qualitative examples
 
-## Experiment
+## Stitching comparison
 
-Dataset: `hf-internal-testing/librispeech_asr_dummy`  
-Model: `openai/whisper-tiny.en`
+The pilot used `openai/whisper-tiny.en` on 20 LibriSpeech dummy utterances from one speaker. All chunked methods shared the same transcriptions of 1,200 ms windows with a 400 ms stride.
 
-Compared methods:
+| Method | Mean per-utterance word error rate |
+| --- | ---: |
+| Full-utterance transcription | 6.64% |
+| Naive chunk concatenation | 699.92% |
+| Text-only stitching | 537.10% |
+| Original DTW-guided stitching | 213.78% |
+| Fixed 800 ms overlap + text matching | 201.41% |
 
-- batch transcription
-- naive overlapping chunk transcription
-- DTW-guided chunk stitching
+Fixed-overlap stitching had lower error than DTW on six utterances and tied on the other fourteen. The DTW offset averaged 770 ms on every utterance. Some individual Whisper chunks contained long repetitions before stitching, and insertions can push WER above 100%.
 
-Main result on 20 utterances:
-
-- mean batch WER: `0.066`
-- mean naive chunked WER: `6.999`
-- mean DTW-guided WER: `2.138`
-- mean first-chunk latency: `206.9 ms`
-
-DTW-guided stitching does not match full-utterance batch accuracy, but it substantially reduces the failure mode introduced by naive low-latency chunking.
+The evaluator reports how long the first chunk takes to decode. Live caption latency would also include the time to collect the audio and process and display the output.
 
 ## Run
 
@@ -43,13 +39,12 @@ PYTHONPATH=src python scripts/evaluate_dummy_dataset.py \
   --split validation \
   --limit 20 \
   --model openai/whisper-tiny.en \
-  --results results/experiment_v1.json
-PYTHONPATH=src python scripts/make_report.py \
-  --results results/experiment_v1.json \
-  --report report/short_report.md
+  --results results/whisper-tiny-stitching.json
 ```
 
-## Report
+The results JSON contains the raw chunk transcripts and per-utterance scores for all methods.
+
+## Original pilot report
 
 - [Short report](report/short_report.md)
 - [WER figure](report/figures/wer_boxplot.png)

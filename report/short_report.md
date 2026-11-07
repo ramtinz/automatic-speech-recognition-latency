@@ -1,5 +1,7 @@
 # Short Report: DTW-Guided Chunk Stitching for Low-Latency ASR
 
+The [follow-up comparison](../README.md#stitching-comparison) adds fixed-overlap and text-only stitching on the same 20 utterances. The figures and tables below document the original three-method pilot.
+
 ## Problem
 
 Low-latency ASR often uses short overlapping chunks so text can appear before the speaker finishes. That helps responsiveness, but naive chunk concatenation often duplicates words, drops context, or fragments phrases at chunk boundaries.
@@ -28,7 +30,7 @@ DTW is not used as the recognizer itself. Its role is to align neighboring overl
 
 Mean batch WER was `0.066`. Mean naive chunked WER increased to `6.999`. The DTW-guided method reduced this to `2.138`.
 
-Mean batch latency was `596.6` ms, while mean first-chunk latency for the streaming-style methods was `206.9` ms.
+Mean full-utterance decoding time was `596.6` ms. Mean first-chunk decoding time was `206.9` ms, excluding the 1,200 ms audio collection window and any stitching or display time.
 
 ![WER boxplot](figures/wer_boxplot.png)
 

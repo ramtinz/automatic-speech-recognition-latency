@@ -58,9 +58,9 @@ def tokenize_text(text: str) -> list[str]:
     return cleaned.split()
 
 
-def stitch_chunk_texts_with_dtw(
+def stitch_chunk_texts(
     chunk_texts: list[str],
-    chunk_offsets: list[dict[str, float]],
+    chunk_offsets: list[dict[str, float]] | None,
     chunk_ms: int,
     overlap_ms: int,
     search_radius: int = 4,
@@ -74,12 +74,18 @@ def stitch_chunk_texts_with_dtw(
         if not next_words:
             continue
 
-        dtw_offset_ms = chunk_offsets[index]["offset_ms"] if index < len(chunk_offsets) else float(overlap_ms)
-        estimated_drop = int(round(len(next_words) * min(dtw_offset_ms, overlap_ms) / max(chunk_ms, 1)))
-        candidate_range = range(
-            max(0, estimated_drop - search_radius),
-            min(len(next_words), estimated_drop + search_radius) + 1,
-        )
+        estimated_drop = 0
+        if chunk_offsets is None:
+            candidate_range = range(min(12, len(merged_words), len(next_words)) + 1)
+        else:
+            overlap_hint_ms = (
+                chunk_offsets[index]["offset_ms"] if index < len(chunk_offsets) else overlap_ms
+            )
+            estimated_drop = round(len(next_words) * min(overlap_hint_ms, overlap_ms) / max(chunk_ms, 1))
+            candidate_range = range(
+                max(0, estimated_drop - search_radius),
+                min(len(next_words), estimated_drop + search_radius) + 1,
+            )
 
         best_drop = 0
         best_score = -1.0
@@ -91,7 +97,8 @@ def stitch_chunk_texts_with_dtw(
                 left_tail = " ".join(merged_words[-overlap_length:])
                 right_head = " ".join(next_words[max(0, drop_words - overlap_length) : drop_words])
                 score = Levenshtein.normalized_similarity(left_tail, right_head)
-                score -= 0.03 * abs(drop_words - estimated_drop)
+                if chunk_offsets is not None:
+                    score -= 0.03 * abs(drop_words - estimated_drop)
             if score > best_score:
                 best_score = score
                 best_drop = drop_words
@@ -102,3 +109,7 @@ def stitch_chunk_texts_with_dtw(
         merged_words.extend(next_words[best_drop:])
 
     return " ".join(merged_words)
+
+
+# Preserve the original entry point for existing callers.
+stitch_chunk_texts_with_dtw = stitch_chunk_texts
