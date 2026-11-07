@@ -4,10 +4,12 @@ import argparse
 import json
 import re
 import time
+from collections import Counter
 from statistics import mean, median
 from pathlib import Path
 
 from datasets import load_dataset
+from rapidfuzz.distance import Levenshtein
 
 from mini_asr_lab.audio import chunk_audio
 from mini_asr_lab.backends import build_backend
@@ -28,26 +30,50 @@ def normalize_text(text: str) -> str:
     return text.strip()
 
 
-def word_error_rate(reference: str, hypothesis: str) -> float:
-    ref_words = normalize_text(reference).split()
-    hyp_words = normalize_text(hypothesis).split()
+TRANSCRIPT_FIELDS = {
+    "batch": "batch_text",
+    "naive_chunk": "naive_chunk_text",
+    "text_only": "text_only_text",
+    "fixed_overlap": "fixed_overlap_text",
+    "dtw_chunk": "dtw_stitched_text",
+}
 
-    dp = [[0] * (len(hyp_words) + 1) for _ in range(len(ref_words) + 1)]
-    for i in range(len(ref_words) + 1):
-        dp[i][0] = i
-    for j in range(len(hyp_words) + 1):
-        dp[0][j] = j
 
-    for i in range(1, len(ref_words) + 1):
-        for j in range(1, len(hyp_words) + 1):
-            cost = 0 if ref_words[i - 1] == hyp_words[j - 1] else 1
-            dp[i][j] = min(
-                dp[i - 1][j] + 1,
-                dp[i][j - 1] + 1,
-                dp[i - 1][j - 1] + cost,
-            )
+def word_errors(reference_words: list[str], hypothesis: str) -> dict[str, int]:
+    operations = Levenshtein.editops(reference_words, normalize_text(hypothesis).split())
+    counts = Counter(operation.tag for operation in operations)
+    return {
+        "substitutions": counts["replace"],
+        "deletions": counts["delete"],
+        "insertions": counts["insert"],
+    }
 
-    return dp[-1][-1] / max(len(ref_words), 1)
+
+def score_transcripts(examples: list[dict]) -> dict:
+    totals = {method: Counter() for method in TRANSCRIPT_FIELDS}
+    reference_word_count = 0
+    for example in examples:
+        reference_words = normalize_text(example["reference"]).split()
+        reference_word_count += len(reference_words)
+        example["reference_words"] = len(reference_words)
+        example["word_errors"] = {}
+        for method, field in TRANSCRIPT_FIELDS.items():
+            errors = word_errors(reference_words, example[field])
+            example["word_errors"][method] = errors
+            example[f"{method}_wer"] = round(sum(errors.values()) / max(len(reference_words), 1), 4)
+            totals[method].update(errors)
+
+    return {
+        "reference_words": reference_word_count,
+        "corpus_word_errors": {
+            method: {
+                **counts,
+                "wer": round(sum(counts.values()) / reference_word_count, 4)
+                if reference_word_count else None,
+            }
+            for method, counts in totals.items()
+        },
+    }
 
 
 def main() -> None:
@@ -120,11 +146,6 @@ def main() -> None:
                 "fixed_overlap_text": fixed_overlap_text,
                 "text_only_text": text_only_text,
                 "chunk_outputs": chunk_outputs,
-                "batch_wer": round(word_error_rate(reference, batch_text), 4),
-                "naive_chunk_wer": round(word_error_rate(reference, naive_chunk_text), 4),
-                "fixed_overlap_wer": round(word_error_rate(reference, fixed_overlap_text), 4),
-                "text_only_wer": round(word_error_rate(reference, text_only_text), 4),
-                "dtw_chunk_wer": round(word_error_rate(reference, dtw_stitched_text), 4),
                 "audio_seconds": round(len(samples) / sample_rate, 3),
                 "batch_ms": round(batch_ms, 3),
                 "mean_chunk_ms": round(sum(chunk_latencies_ms) / max(len(chunk_latencies_ms), 1), 3),
@@ -141,6 +162,7 @@ def main() -> None:
         )
 
     summary_metrics = {
+        **score_transcripts(examples),
         "mean_batch_wer": round(mean(item["batch_wer"] for item in examples), 4),
         "mean_naive_chunk_wer": round(mean(item["naive_chunk_wer"] for item in examples), 4),
         "mean_fixed_overlap_wer": round(mean(item["fixed_overlap_wer"] for item in examples), 4),
@@ -148,6 +170,8 @@ def main() -> None:
         "mean_dtw_chunk_wer": round(mean(item["dtw_chunk_wer"] for item in examples), 4),
         "median_batch_wer": round(median(item["batch_wer"] for item in examples), 4),
         "median_naive_chunk_wer": round(median(item["naive_chunk_wer"] for item in examples), 4),
+        "median_fixed_overlap_wer": round(median(item["fixed_overlap_wer"] for item in examples), 4),
+        "median_text_only_wer": round(median(item["text_only_wer"] for item in examples), 4),
         "median_dtw_chunk_wer": round(median(item["dtw_chunk_wer"] for item in examples), 4),
         "mean_batch_latency_ms": round(mean(item["batch_ms"] for item in examples), 3),
         "mean_first_chunk_latency_ms": round(mean(item["estimated_first_chunk_latency_ms"] for item in examples), 3),
