@@ -40,4 +40,4 @@ The first run downloads the dataset and model. Inference runs locally on CPU. Th
 
 ## Test bilingual speech
 
-Use the multilingual Whisper Tiny and Small checkpoints to compare Spanish, English, and mixed-language clips. The [bilingual benchmark guide](report/bilingual-benchmark.md) explains how to prepare local audio and compare the results by condition.
+Use the multilingual Whisper Tiny and Small checkpoints to compare Spanish, English, and mixed-language clips. The [bilingual benchmark guide](report/bilingual-benchmark.md) includes the first Bangor Miami pilot results and explains how to run the same comparison on local audio.

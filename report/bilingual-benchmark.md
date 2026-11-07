@@ -2,6 +2,20 @@
 
 How well do transcripts preserve both languages when speakers switch mid-sentence? This extension uses multilingual Whisper in transcription mode with automatic language detection. Tiny and Small should be compared on the same recordings, windows, and stitching rules.
 
+## First pilot results
+
+We ran multilingual Whisper Tiny and Small locally on the same eight time-aligned excerpts from one Bangor Miami conversation. The sample contained two English, four Spanish, and two mixed-language excerpts, with 55 reference words in total. Both models used automatic language detection and the same 1,200 ms window and 400 ms stride. Stitching methods shared each model's chunk outputs.
+
+| Method | Tiny corpus WER | Small corpus WER | Tiny insertions | Small insertions |
+| --- | ---: | ---: | ---: | ---: |
+| Full excerpt | 600.0% | 56.4% | 290 | 2 |
+| Fixed overlap + text matching | 230.9% | 210.9% | 85 | 79 |
+| DTW-guided stitching | 241.8% | 223.6% | 91 | 86 |
+
+Whisper Small reduced repetitions most when it could decode the entire excerpt. With short windows, word error remained high for both checkpoints. Fixed overlap had lower corpus WER overall than DTW, and the two methods tied on the mixed-language excerpts for each model.
+
+This diagnostic run uses one conversation and only 10 mixed-language reference words. A broader benchmark needs held-out conversations with multiple speakers, longer windows, and real-time replay to measure caption stability. Only aggregate metrics are shown here.
+
 ## Prepare clips
 
 Obtain the audio and CHAT transcripts from the [Bangor Miami Corpus](https://talkbank.org/biling/access/Bangor/Miami.html) through TalkBank. Keep audio and references local. Select development and test conversations before tuning, and keep speakers separate across the two sets. Include English-only and Spanish-only controls from the same conversations where available.
