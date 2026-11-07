@@ -10,3 +10,4 @@ datasets
 soundfile
 torchcodec
 matplotlib
+rapidfuzz

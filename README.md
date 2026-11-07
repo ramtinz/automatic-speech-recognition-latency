@@ -37,3 +37,7 @@ PYTHONPATH=src python scripts/evaluate_dummy_dataset.py \
 ```
 
 The first run downloads the dataset and model. Inference runs locally on CPU. The JSON includes raw chunk transcripts, per-utterance scores, and corpus totals for substitutions, deletions, and insertions.
+
+## Test bilingual speech
+
+Use the multilingual Whisper Tiny and Small checkpoints to compare Spanish, English, and mixed-language clips. The [bilingual benchmark guide](report/bilingual-benchmark.md) explains how to prepare local audio and compare the results by condition.

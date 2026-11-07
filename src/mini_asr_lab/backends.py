@@ -30,7 +30,12 @@ class WhisperTransformersBackend:
         )
 
     def transcribe(self, samples: np.ndarray, sample_rate: int) -> str:
-        result = self.pipeline({"array": samples, "sampling_rate": sample_rate})
+        generate_kwargs = {}
+        if getattr(self.pipeline.model.generation_config, "is_multilingual", False):
+            generate_kwargs = {"task": "transcribe"}
+        result = self.pipeline(
+            {"array": samples, "sampling_rate": sample_rate}, generate_kwargs=generate_kwargs
+        )
         return str(result["text"]).strip()
 
 

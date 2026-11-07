@@ -3,6 +3,8 @@ from __future__ import annotations
 import numpy as np
 from rapidfuzz.distance import Levenshtein
 
+from mini_asr_lab.text import tokenize_text
+
 
 def overlap_features(
     samples: np.ndarray,
@@ -46,16 +48,6 @@ def estimate_overlap_offset(
         "offset_frames": float(offset_frames),
         "offset_ms": float(offset_frames * hop_ms),
     }
-
-
-def tokenize_text(text: str) -> list[str]:
-    import re
-
-    cleaned = re.sub(r"[^a-z0-9' ]+", " ", text.lower())
-    cleaned = re.sub(r"\s+", " ", cleaned).strip()
-    if not cleaned:
-        return []
-    return cleaned.split()
 
 
 def stitch_chunk_texts(

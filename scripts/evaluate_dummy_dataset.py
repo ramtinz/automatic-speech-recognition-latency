@@ -2,7 +2,6 @@ from __future__ import annotations
 
 import argparse
 import json
-import re
 import time
 from collections import Counter
 from statistics import mean, median
@@ -11,9 +10,10 @@ from pathlib import Path
 from datasets import load_dataset
 from rapidfuzz.distance import Levenshtein
 
-from mini_asr_lab.audio import chunk_audio
+from mini_asr_lab.audio import chunk_audio, load_audio
 from mini_asr_lab.backends import build_backend
 from mini_asr_lab.dtw_alignment import estimate_overlap_offset, stitch_chunk_texts
+from mini_asr_lab.text import tokenize_text
 
 
 def timed_call(fn):
@@ -21,13 +21,6 @@ def timed_call(fn):
     result = fn()
     duration_ms = (time.perf_counter() - start) * 1000.0
     return result, duration_ms
-
-
-def normalize_text(text: str) -> str:
-    text = text.lower().strip()
-    text = re.sub(r"[^a-z0-9' ]+", " ", text)
-    text = re.sub(r"\s+", " ", text)
-    return text.strip()
 
 
 TRANSCRIPT_FIELDS = {
@@ -40,7 +33,7 @@ TRANSCRIPT_FIELDS = {
 
 
 def word_errors(reference_words: list[str], hypothesis: str) -> dict[str, int]:
-    operations = Levenshtein.editops(reference_words, normalize_text(hypothesis).split())
+    operations = Levenshtein.editops(reference_words, tokenize_text(hypothesis))
     counts = Counter(operation.tag for operation in operations)
     return {
         "substitutions": counts["replace"],
@@ -53,7 +46,7 @@ def score_transcripts(examples: list[dict]) -> dict:
     totals = {method: Counter() for method in TRANSCRIPT_FIELDS}
     reference_word_count = 0
     for example in examples:
-        reference_words = normalize_text(example["reference"]).split()
+        reference_words = tokenize_text(example["reference"])
         reference_word_count += len(reference_words)
         example["reference_words"] = len(reference_words)
         example["word_errors"] = {}
@@ -76,9 +69,22 @@ def score_transcripts(examples: list[dict]) -> dict:
     }
 
 
+def manifest_rows(path: Path, limit: int):
+    rows = json.loads(path.read_text(encoding="utf-8"))
+    for row in rows[:limit]:
+        audio = load_audio(path.parent / row["audio"])
+        yield {
+            "id": row["id"],
+            "text": row["text"],
+            "cohort": row.get("cohort", "unspecified"),
+            "audio": {"array": audio.samples, "sampling_rate": audio.sample_rate},
+        }
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--dataset", default="hf-internal-testing/librispeech_asr_dummy")
+    parser.add_argument("--manifest", type=Path, help="Local JSON list of WAV clips and references")
     parser.add_argument("--config", default="clean")
     parser.add_argument("--split", default="validation")
     parser.add_argument("--limit", type=int, default=3)
@@ -89,12 +95,18 @@ def main() -> None:
     parser.add_argument("--results", default="results/dummy_dataset_eval.json")
     args = parser.parse_args()
 
-    dataset = load_dataset(args.dataset, args.config, split=args.split)
+    if args.limit < 1:
+        parser.error("--limit must be at least 1")
+    if args.manifest:
+        rows = manifest_rows(args.manifest, args.limit)
+    else:
+        dataset = load_dataset(args.dataset, args.config, split=args.split)
+        rows = dataset.select(range(min(args.limit, len(dataset))))
     backend = build_backend(args.backend, args.model)
     examples = []
     overlap_ms = max(args.chunk_ms - args.stride_ms, 0)
 
-    for row in dataset.select(range(min(args.limit, len(dataset)))):
+    for row in rows:
         audio = row["audio"]
         samples = audio["array"]
         sample_rate = int(audio["sampling_rate"])
@@ -140,6 +152,7 @@ def main() -> None:
             {
                 "id": row.get("id"),
                 "reference": reference,
+                "cohort": row.get("cohort", "unspecified"),
                 "batch_text": batch_text,
                 "naive_chunk_text": naive_chunk_text,
                 "dtw_stitched_text": dtw_stitched_text,
@@ -161,6 +174,9 @@ def main() -> None:
             }
         )
 
+    if not examples:
+        parser.error("No examples selected")
+
     summary_metrics = {
         **score_transcripts(examples),
         "mean_batch_wer": round(mean(item["batch_wer"] for item in examples), 4),
@@ -177,10 +193,20 @@ def main() -> None:
         "mean_first_chunk_latency_ms": round(mean(item["estimated_first_chunk_latency_ms"] for item in examples), 3),
     }
 
+    cohort_metrics = {}
+    if args.manifest:
+        for cohort in sorted({item["cohort"] for item in examples}):
+            cohort_examples = [item for item in examples if item["cohort"] == cohort]
+            cohort_metrics[cohort] = {"utterances": len(cohort_examples), **score_transcripts(cohort_examples)}
+
+    source = (
+        {"manifest": str(args.manifest)}
+        if args.manifest
+        else {"dataset": args.dataset, "config": args.config, "split": args.split}
+    )
     summary = {
-        "dataset": args.dataset,
-        "config": args.config,
-        "split": args.split,
+        **source,
+        "cohort_metrics": cohort_metrics,
         "limit": args.limit,
         "model": args.model,
         "chunk_ms": args.chunk_ms,
